@@ -1,8 +1,7 @@
 import random
 import numpy as np
 
-from TerrainType import TerrainType
-
+from .TerrainType import TerrainType
 
 """
 Simulateur de feux de forêts avec génération de carte aléatoire
