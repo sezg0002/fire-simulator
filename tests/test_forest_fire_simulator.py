@@ -3,11 +3,7 @@ import numpy as np
 import os
 import io
 from unittest.mock import patch
-import tempfile
-
 from src.ForestFireSimulator import ForestFireSimulator, TerrainType
-
-
 
 class TestForestFireSimulator(unittest.TestCase):
     def setUp(self):
@@ -179,6 +175,61 @@ class TestForestFireSimulator(unittest.TestCase):
             self.sim.afficher_carte(utiliser_symboles=True, afficher_incendie=True)
             output = fake_out.getvalue()
         self.assertTrue("🔥" in output or "*" in output)
+
+    def test_exporter_html(self):
+        self.sim.generer_carte_aleatoire(60, 10)
+        self.sim.simulation_complete_avec_deboisement()
+        dossier_sortie = "test_exports_html"
+        self.sim.exporter_html(dossier_sortie=dossier_sortie)
+        fichiers_attendus = [
+            "carte_originale.html",
+            "carte_apres_incendie.html",
+            "carte_avec_deboisement.html"
+        ]
+        for nom in fichiers_attendus:
+            chemin = os.path.join(dossier_sortie, nom)
+            self.assertTrue(os.path.exists(chemin))
+            os.remove(chemin)
+        os.rmdir(dossier_sortie)
+
+    def test_integration_complete(self):
+        self.sim.generer_carte_aleatoire(pourcentage_arbres=50, pourcentage_eau=10)
+        stats_avant = self.sim.obtenir_statistiques()
+        total_cases = self.sim.largeur * self.sim.hauteur
+
+        self.sim.simulation_complete_avec_deboisement()
+        donnees = self.sim.donnees_simulation
+
+        self.assertIn('carte_originale', donnees)
+        self.assertIn('carte_sans_deboisement', donnees)
+        self.assertIn('carte_avec_deboisement', donnees)
+        self.assertIn('resultats_deboisement', donnees)
+        self.assertIn('stats_sans_deboisement', donnees)
+        self.assertIn('stats_avec_deboisement', donnees)
+        self.assertIn('comparaison', donnees)
+
+        stats_sans = donnees['stats_sans_deboisement']
+        stats_avec = donnees['stats_avec_deboisement']
+        comp = donnees['comparaison']
+
+        self.assertLessEqual(stats_avec['arbres_brules'], stats_sans['arbres_brules'])
+
+        self.assertEqual(stats_avec['arbres_originaux'], stats_sans['arbres_originaux'] - 1)
+
+        self.assertEqual(comp['arbres_sauves'], stats_sans['arbres_brules'] - stats_avec['arbres_brules'])
+
+        dossier_sortie = "test_exports_html_integration"
+        self.sim.exporter_html(dossier_sortie=dossier_sortie)
+        fichiers_attendus = [
+            "carte_originale.html",
+            "carte_apres_incendie.html",
+            "carte_avec_deboisement.html"
+        ]
+        for nom in fichiers_attendus:
+            chemin = os.path.join(dossier_sortie, nom)
+            self.assertTrue(os.path.exists(chemin))
+            os.remove(chemin)
+        os.rmdir(dossier_sortie)
 
 if __name__ == '__main__':
     unittest.main()
