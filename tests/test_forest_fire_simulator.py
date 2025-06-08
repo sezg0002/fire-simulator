@@ -2,8 +2,8 @@ import unittest
 import numpy as np
 import os
 
-from src.TerrainType import TerrainType
-from src.ForestFireSimulator import ForestFireSimulator
+from src.ForestFireSimulator import ForestFireSimulator, TerrainType
+
 
 class TestForestFireSimulator(unittest.TestCase):
     def setUp(self):
