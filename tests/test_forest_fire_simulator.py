@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 import os
+import io
+from unittest.mock import patch
 
 from src.ForestFireSimulator import ForestFireSimulator, TerrainType
 
@@ -56,6 +58,88 @@ class TestForestFireSimulator(unittest.TestCase):
         self.assertTrue(
             any(unique_values == TerrainType.EAU.value) or any(unique_values == TerrainType.TERRAIN_NU.value))
         os.remove(test_filename + ".npy")  # Nettoyage
+
+    def test_simuler_incendie_centre(self):
+        self.sim.carte.fill(TerrainType.ARBRE.value)
+        stats = self.sim.simuler_incendie(self.hauteur // 2, self.largeur // 2)
+        self.assertEqual(stats['arbres_brules'], self.largeur * self.hauteur)
+        self.assertAlmostEqual(stats['pourcentage_brule'], 100.0)
+        self.assertEqual(stats['arbres_originaux'], self.largeur * self.hauteur)
+
+    def test_simuler_incendie_coin(self):
+        self.sim.carte.fill(TerrainType.TERRAIN_NU.value)
+        self.sim.carte[0, 0] = TerrainType.ARBRE.value
+        self.sim.carte[0, 1] = TerrainType.ARBRE.value
+        self.sim.carte[1, 0] = TerrainType.EAU.value
+        stats = self.sim.simuler_incendie(0, 0)
+        self.assertEqual(stats['arbres_brules'], 2)
+        self.assertEqual(stats['arbres_originaux'], 2)
+        self.assertAlmostEqual(stats['pourcentage_brule'], 100.0)
+
+    def test_simuler_incendie_aucun_arbre(self):
+        self.sim.carte.fill(TerrainType.TERRAIN_NU.value)
+        stats = self.sim.simuler_incendie(0, 0)
+        self.assertEqual(stats['arbres_brules'], 0)
+        self.assertEqual(stats['arbres_originaux'], 0)
+        self.assertEqual(stats['pourcentage_brule'], 0.0)
+        self.assertIsNone(stats['position_depart'])
+
+    def test_simuler_incendie_case_non_arbre(self):
+        self.sim.carte.fill(TerrainType.TERRAIN_NU.value)
+        self.sim.carte[3, 3] = TerrainType.EAU.value
+        stats = self.sim.simuler_incendie(3, 3)
+        self.assertEqual(stats['arbres_brules'], 0)
+        self.assertEqual(stats['arbres_originaux'], 0)
+        self.assertEqual(stats['pourcentage_brule'], 0.0)
+
+    def test_simuler_incendie_fragmentation(self):
+        self.sim.carte.fill(TerrainType.EAU.value)
+        self.sim.carte[0, 0] = TerrainType.ARBRE.value
+        self.sim.carte[0, 1] = TerrainType.ARBRE.value
+        self.sim.carte[9, 9] = TerrainType.ARBRE.value
+        stats = self.sim.simuler_incendie(0, 0)
+        self.assertEqual(stats['arbres_brules'], 2)
+        self.assertEqual(stats['arbres_originaux'], 3)
+        self.assertAlmostEqual(stats['pourcentage_brule'], 2 / 3 * 100, delta=1)
+
+    def test_obtenir_voisins_centre(self):
+        voisins = self.sim.obtenir_voisins(5, 5)
+        self.assertEqual(len(voisins), 8)
+        self.assertIn((4, 4), voisins)
+        self.assertIn((6, 6), voisins)
+
+    def test_obtenir_voisins_coin(self):
+        voisins = self.sim.obtenir_voisins(0, 0)
+        self.assertEqual(len(voisins), 3)
+        self.assertIn((0, 1), voisins)
+        self.assertIn((1, 0), voisins)
+        self.assertIn((1, 1), voisins)
+
+    def test_obtenir_voisins_bord(self):
+        voisins = self.sim.obtenir_voisins(0, 5)
+        self.assertEqual(len(voisins), 5)
+
+    def test_generer_carte_aleatoire_extreme(self):
+        self.sim.generer_carte_aleatoire(100, 0)
+        self.assertTrue(np.all(self.sim.carte == TerrainType.ARBRE.value))
+        self.sim.generer_carte_aleatoire(0, 100)
+        self.assertTrue(np.all(self.sim.carte == TerrainType.EAU.value))
+        self.sim.generer_carte_aleatoire(0, 0)
+        self.assertTrue(np.all(self.sim.carte == TerrainType.TERRAIN_NU.value))
+
+    def test_console_output(self):
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.sim.generer_carte_aleatoire(50, 20)
+            output = fake_out.getvalue()
+        self.assertIn("Carte générée", output)
+
+    def test_console_output_simuler_incendie(self):
+        self.sim.carte.fill(TerrainType.ARBRE.value)
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.sim.simuler_incendie(0, 0)
+            output = fake_out.getvalue()
+        self.assertIn("🔥 Démarrage de l'incendie", output)
+        self.assertIn("Incendie simulé", output)
 
 
 if __name__ == '__main__':
