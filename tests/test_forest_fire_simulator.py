@@ -3,8 +3,11 @@ import numpy as np
 import os
 import io
 from unittest.mock import patch
+import tempfile
 
 from src.ForestFireSimulator import ForestFireSimulator, TerrainType
+
+
 
 class TestForestFireSimulator(unittest.TestCase):
     def setUp(self):
@@ -140,6 +143,42 @@ class TestForestFireSimulator(unittest.TestCase):
         self.assertIn("🔥 Démarrage de l'incendie", output)
         self.assertIn("Incendie simulé", output)
 
+    def test_trouver_meilleure_case_a_deboiser(self):
+        self.sim.carte.fill(TerrainType.ARBRE.value)
+        result = self.sim.trouver_meilleure_case_a_deboiser(5, 5)
+        self.assertIn("position_deboisement", result)
+        self.assertIn("arbres_sauves", result)
+        self.assertIn("pourcentage_reduction", result)
+        self.assertTrue(result["arbres_sauves"] >= 0)
+        self.assertTrue(result["pourcentage_reduction"] >= 0)
+
+    def test_trouver_meilleure_case_a_deboiser_statistiques_coherentes(self):
+        self.sim.carte.fill(TerrainType.ARBRE.value)
+        result = self.sim.trouver_meilleure_case_a_deboiser(2, 2)
+        self.assertLessEqual(result["arbres_brules_avec_deboisement"], result["arbres_brules_sans_deboisement"])
+        self.assertGreaterEqual(result["pourcentage_reduction"], 0)
+
+    def test_simulation_complete_avec_deboisement_integration(self):
+        self.sim.generer_carte_aleatoire(pourcentage_arbres=70, pourcentage_eau=10)
+        with patch("sys.stdout", new=io.StringIO()) as fake_out:
+            self.sim.simulation_complete_avec_deboisement()
+            output = fake_out.getvalue()
+        self.assertIn("CARTE ORIGINALE", output)
+        self.assertIn("Résultats de l'incendie avec déboisement", output)
+        self.assertIn("Arbres brûlés", output)
+
+    def test_afficher_carte_variantes(self):
+        self.sim.carte.fill(TerrainType.ARBRE.value)
+        for use_symbols in [True, False]:
+            with patch("sys.stdout", new=io.StringIO()) as fake_out:
+                self.sim.afficher_carte(utiliser_symboles=use_symbols, afficher_incendie=False)
+                output = fake_out.getvalue()
+            self.assertTrue(output.strip() != "")
+        self.sim.carte[1, 1] = TerrainType.BRULE.value
+        with patch("sys.stdout", new=io.StringIO()) as fake_out:
+            self.sim.afficher_carte(utiliser_symboles=True, afficher_incendie=True)
+            output = fake_out.getvalue()
+        self.assertTrue("🔥" in output or "*" in output)
 
 if __name__ == '__main__':
     unittest.main()
