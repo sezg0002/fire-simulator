@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from src.ForestFireSimulator import ForestFireSimulator, TerrainType
 
-
 class TestForestFireSimulator(unittest.TestCase):
     def setUp(self):
         self.largeur = 10
