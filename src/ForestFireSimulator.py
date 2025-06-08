@@ -1,8 +1,17 @@
 import random
 import numpy as np
 from collections import deque
+from enum import Enum
 
-from TerrainType import TerrainType
+
+class TerrainType(Enum):
+    """Énumération des différents types de terrain"""
+    TERRAIN_NU = 0     
+    ARBRE = 1           
+    EAU = 2             
+    FEU = 3             
+    BRULE = 4           
+
 class ForestFireSimulator:
     """
     Simulateur de feux de forêts avec génération de carte aléatoire
