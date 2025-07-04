@@ -10,3 +10,12 @@ venv/
 
 # Pytest cache
 .cache/
+
+# Test output directories
+test_exports_html/
+test_exports_html_integration/
+test_refactor_html/
+exports_html/
+
+# Temporary files
+*.npy

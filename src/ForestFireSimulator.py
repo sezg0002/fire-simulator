@@ -384,230 +384,48 @@ class ForestFireSimulator:
 
     def _generer_html_carte(self, carte: np.ndarray, titre: str, description: str = "") -> str:
         """Génère le HTML pour une carte donnée"""
-        # Couleurs pour chaque type de terrain
-        couleurs = {
-            TerrainType.TERRAIN_NU.value: '#D2B48C',  # Beige pour terrain nu
-            TerrainType.ARBRE.value: '#228B22',  # Vert pour les arbres
-            TerrainType.EAU.value: '#4169E1',  # Bleu pour l'eau
-            TerrainType.BRULE.value: '#DC143C'  # Rouge pour les zones brûlées
-        }
-
-        symboles = {
-            TerrainType.TERRAIN_NU.value: '.',
-            TerrainType.ARBRE.value: '🌲',
-            TerrainType.EAU.value: '💧',
-            TerrainType.BRULE.value: '🔥'
-        }
-
-        html = f"""
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{titre}</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    margin: 20px;
-                    background-color: #f5f5f5;
-                }}
-                .container {{
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                }}
-                h1 {{
-                    color: #333;
-                    text-align: center;
-                    margin-bottom: 20px;
-                }}
-                .description {{
-                    background-color: #e8f4f8;
-                    padding: 15px;
-                    border-radius: 5px;
-                    margin-bottom: 20px;
-                    border-left: 5px solid #007acc;
-                }}
-                .carte {{
-                    display: grid;
-                    grid-template-columns: repeat({self.largeur}, 1fr);
-                    gap: 1px;
-                    background-color: #ddd;
-                    padding: 10px;
-                    border-radius: 5px;
-                    margin: 20px auto;
-                    width: fit-content;
-                }}
-                .case {{
-                    width: 20px;
-                    height: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    border: 1px solid #888;
-                }}
-                .legende {{
-                    display: flex;
-                    justify-content: center;
-                    gap: 20px;
-                    margin-top: 20px;
-                    flex-wrap: wrap;
-                }}
-                .legende-item {{
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                    padding: 5px 10px;
-                    background-color: #f0f0f0;
-                    border-radius: 15px;
-                }}
-                .legende-couleur {{
-                    width: 15px;
-                    height: 15px;
-                    border: 1px solid #333;
-                    border-radius: 3px;
-                }}
-                .timestamp {{
-                    text-align: center;
-                    color: #666;
-                    font-size: 12px;
-                    margin-top: 20px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>{titre}</h1>
-                {f'<div class="description">{description}</div>' if description else ''}
-
-                <div class="carte">
-        """
-
-        # Générer la grille
-        for i in range(self.hauteur):
-            for j in range(self.largeur):
-                valeur = carte[i, j]
-                couleur = couleurs.get(valeur, '#FFFFFF')
-                symbole = symboles.get(valeur, '?')
-                html += f'<div class="case" style="background-color: {couleur};" title="Ligne {i}, Colonne {j}: {symbole}">{symbole}</div>\n'
-
-        html += """
-                </div>
-
-                <div class="legende">
-                    <div class="legende-item">
-                        <div class="legende-couleur" style="background-color: #D2B48C;"></div>
-                        <span>Terrain nu (.)</span>
-                    </div>
-                    <div class="legende-item">
-                        <div class="legende-couleur" style="background-color: #228B22;"></div>
-                        <span>Arbres (🌲)</span>
-                    </div>
-                    <div class="legende-item">
-                        <div class="legende-couleur" style="background-color: #4169E1;"></div>
-                        <span>Eau (💧)</span>
-                    </div>
-                    <div class="legende-item">
-                        <div class="legende-couleur" style="background-color: #DC143C;"></div>
-                        <span>Zone brûlée (🔥)</span>
-                    </div>
-                </div>
-
-                <div class="timestamp">
-                    Généré le """ + datetime.now().strftime("%d/%m/%Y à %H:%M:%S") + """
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        return html
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from services.html.html_template_builder import HtmlTemplateBuilder
+        
+        template_builder = HtmlTemplateBuilder(self.largeur, self.hauteur)
+        return template_builder.generate_html_carte(carte, titre, description)
 
     def exporter_html(self, dossier_sortie: str = "exports_html"):
         """
         Exporte les trois états de la simulation en HTML
         """
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from services.data.data_processor import DataProcessor
+        from services.export.export_service import ExportService
+        
         if not self.donnees_simulation:
             print("Erreur: Aucune simulation n'a été effectuée. Lancez d'abord simulation_complete_avec_deboisement()")
             return
 
-        # Créer le dossier de sortie
-        os.makedirs(dossier_sortie, exist_ok=True)
-
-        donnees = self.donnees_simulation
-
-        # 1. Carte originale
-        stats_orig = donnees['stats_originales']
-        description_orig = f"""
-        <strong>Statistiques de la carte originale :</strong><br>
-        • Dimension : {self.hauteur} × {self.largeur} ({stats_orig['total']} cases)<br>
-        • Arbres : {stats_orig['arbres']} cases ({stats_orig['arbres_pct']:.1f}%)<br>
-        • Eau : {stats_orig['eau']} cases ({stats_orig['eau_pct']:.1f}%)<br>
-        • Terrain nu : {stats_orig['terrain_nu']} cases ({stats_orig['terrain_nu_pct']:.1f}%)<br>
-        • Position de l'incendie : {donnees['position_incendie']}
-        """
-
-        html_original = self._generer_html_carte(
-            donnees['carte_originale'],
-            "Carte Originale de la Forêt",
-            description_orig
+        # Préparer les données pour l'export
+        export_data = DataProcessor.prepare_export_data(
+            self.donnees_simulation, 
+            self.hauteur, 
+            self.largeur
         )
-
-        # 2. Carte après incendie (sans déboisement)
-        stats_sans = donnees['stats_sans_deboisement']
-        description_sans = f"""
-        <strong>Résultats de l'incendie sans déboisement :</strong><br>
-        • Position de départ : {stats_sans['position_depart']}<br>
-        • Arbres brûlés : {stats_sans['arbres_brules']} / {stats_sans['arbres_originaux']}<br>
-        • Pourcentage brûlé : {stats_sans['pourcentage_brule']:.1f}%
-        """
-
-        html_sans_deboisement = self._generer_html_carte(
-            donnees['carte_sans_deboisement'],
-            "Carte Après Incendie (Sans Déboisement)",
-            description_sans
-        )
-
-        # 3. Carte après incendie avec déboisement
-        stats_avec = donnees['stats_avec_deboisement']
-        comp = donnees['comparaison']
-        description_avec = f"""
-        <strong>Résultats de l'incendie avec déboisement :</strong><br>
-        • Position déboisée : {donnees['position_deboisement']}<br>
-        • Arbres brûlés : {stats_avec['arbres_brules']} / {stats_avec['arbres_originaux']}<br>
-        • Pourcentage brûlé : {stats_avec['pourcentage_brule']:.1f}%<br>
-        <br>
-        <strong>Efficacité du déboisement :</strong><br>
-        • Arbres sauvés : {comp['arbres_sauves']}<br>
-        • Taux de réduction : {comp['taux_reduction']:.1f}%
-        """
-
-        html_avec_deboisement = self._generer_html_carte(
-            donnees['carte_avec_deboisement'],
-            "Carte Après Incendie (Avec Déboisement Optimal)",
-            description_avec
-        )
-
+        
+        # Générer les fichiers HTML
+        files_data = []
+        for key, data in export_data.items():
+            html_content = self._generer_html_carte(
+                data['carte'],
+                data['title'],
+                data['description']
+            )
+            files_data.append((data['filename'], html_content))
+        
         # Sauvegarder les fichiers
-        fichiers = [
-            ("carte_originale.html", html_original),
-            ("carte_apres_incendie.html", html_sans_deboisement),
-            ("carte_avec_deboisement.html", html_avec_deboisement)
-        ]
-
-        for nom_fichier, contenu_html in fichiers:
-            chemin_fichier = os.path.join(dossier_sortie, nom_fichier)
-            with open(chemin_fichier, 'w', encoding='utf-8') as f:
-                f.write(contenu_html)
-            print(f"✅ Fichier généré: {chemin_fichier}")
-
-        print(f"\n🎉 Export HTML terminé! Fichiers sauvegardés dans le dossier '{dossier_sortie}'")
-        print("Ouvrez les fichiers .html dans votre navigateur pour visualiser les résultats.")
+        ExportService.save_html_files(files_data, dossier_sortie)
+        ExportService.print_export_summary(dossier_sortie)
 
     def sauvegarder_carte(self, nom_fichier: str):
         """Sauvegarde la carte dans un fichier numpy"""
